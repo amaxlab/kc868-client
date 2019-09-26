@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/amaxlab/go-lib/log"
+	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -34,14 +35,27 @@ func (c *KC868Client) connect() {
 		log.Error.Printf("%s", err)
 		return
 	}
+
+	_ = conn.SetWriteDeadline(time.Time{})
+	_ = conn.SetReadDeadline(time.Time{})
+	_ = conn.SetDeadline(time.Time{})
+
 	c.Connect = conn
 	c.Connected = true
 	go c.reader()
+	go c.pinger()
 	c.send("RELAY-SCAN_DEVICE-NOW")
 }
 
 func (c *KC868Client) disconnect() {
 	_ = c.Connect.Close()
+}
+
+func (c *KC868Client) pinger() {
+	for {
+		time.Sleep(time.Minute * 1)
+		c.send("PING")
+	}
 }
 
 func (c *KC868Client) reader() {
@@ -53,6 +67,9 @@ func (c *KC868Client) reader() {
 			c.handle(str)
 		}
 		if err != nil {
+			if err == io.EOF {
+
+			}
 			break
 		}
 	}
@@ -64,7 +81,11 @@ func (c *KC868Client) send(text string) {
 		log.Warning.Printf("Client not connected")
 		return
 	}
-	fmt.Fprintf(c.Connect, text+"\n")
+
+	_, err := c.Connect.Write([]byte(text))
+	if err != nil {
+		log.Error.Printf("%s", err)
+	}
 }
 
 func (c *KC868Client) handle(text string) {
