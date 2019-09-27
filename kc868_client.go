@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const PingMinutesTime = 1
+
 type Relay struct {
 	Value   bool      `json:"value"`
 	OnTime  time.Time `json:"on_time"`
@@ -36,10 +38,6 @@ func (c *KC868Client) connect() {
 		return
 	}
 
-	_ = conn.SetWriteDeadline(time.Time{})
-	_ = conn.SetReadDeadline(time.Time{})
-	_ = conn.SetDeadline(time.Time{})
-
 	c.Connect = conn
 	c.Connected = true
 	go c.reader()
@@ -53,7 +51,7 @@ func (c *KC868Client) disconnect() {
 
 func (c *KC868Client) pinger() {
 	for {
-		time.Sleep(time.Minute * 1)
+		time.Sleep(time.Minute * PingMinutesTime)
 		c.send("PING")
 	}
 }
